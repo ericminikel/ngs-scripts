@@ -61,14 +61,18 @@ if (opt$verbose) {
     cat(paste("Calculated counts\n",sep=''),file=stdout())
 }
 
-save(counts,file="counts.rda")
+#####
+# If desired, at this point you can save the counts, then have a second script
+# which re-loads them. To do that, uncomment this part and split accordingly.
 
-if (opt$verbose) {
-    cat(paste("Wrote counts to ",getwd(),"\n",sep=''),file=stdout())
-}
+# save(counts,file="counts.rda")
 
-# re-load the counts
-load('counts.rda')
+# if (opt$verbose) {
+    # cat(paste("Wrote counts to ",getwd(),"\n",sep=''),file=stdout())
+# }
+
+# # re-load the counts
+# load('counts.rda')
 
 # counts is an S4 object.
 # you need to cast it to a data frame (for bin length)
