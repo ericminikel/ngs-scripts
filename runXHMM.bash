@@ -31,8 +31,6 @@ if test $verbose
     echo "verbose=$verbose, output_directory='$outdir', unused arguments: $@"
 fi
 
-refdir=
-
 # cat /humgen/gsa-hpprojects/GATK/bundle/2.8/b37/Broad.human.exome.b37.interval_list | grep ^@ > b37.chr22.interval_list
 # cat /humgen/gsa-hpprojects/GATK/bundle/2.8/b37/Broad.human.exome.b37.interval_list | grep ^22 >> b37.chr22.interval_list
 
