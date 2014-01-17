@@ -89,7 +89,7 @@ xhmm --matrix -r $outdir/DATA.RD.txt \
     --excludeSamples $outdir/DATA.PCA_normalized.filtered.sample_zscores.RD.txt.filtered_samples.txt \
     -o $outdir/DATA.same_filtered.RD.txt
 
-echo "1e-08   6       70      -3      1       0       1       3       1" | cat > $outdir/params.txt
+echo "1e-08   6       70      -3      1       0       1       3       1" > $outdir/params.txt
 
 xhmm --discover -p $outdir/params.txt \
     -r $outdir/DATA.PCA_normalized.filtered.sample_zscores.RD.txt -R $outdir/DATA.same_filtered.RD.txt \
