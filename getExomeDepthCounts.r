@@ -5,6 +5,13 @@
 # how to run:
 # getExomeDepthCounts.r -b bamlist.txt -o /output/path/and/filename.rda -v > runExomeDepthOutput.txt
 
+# A note on design:
+# ExomeDepth does not provide native capability to merge counts from multiple files
+# We could hack a solution if need be, but for now I'm just doing all counts
+# for a project in serial in this script.
+# This script takes 5.77 minutes to do chr22 on 20 BAMs, so I predict it will take
+# 5.77 * (1/.02) * (200/20) / (60*24) = ~2 days to do whole exome on 200 BAMs
+
 start_time = Sys.time()
 
 suppressPackageStartupMessages(require(optparse)) # http://cran.r-project.org/web/packages/optparse/optparse.pdf
