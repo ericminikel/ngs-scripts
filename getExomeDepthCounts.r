@@ -45,8 +45,26 @@ if (opt$verbose) {
     cat("Loading ExomeDepth package...\n",file=stdout())
 }
 
-suppressPackageStartupMessages(require(ExomeDepth)) # http://cran.r-project.org/web/packages/ExomeDepth/ExomeDepth.pdf
-data(exons.hg19) # from ExomeDepth package
+# try to load the ExomeDepth package in a safe and informative way
+tryCatch ({
+    # try
+    suppressPackageStartupMessages(require(ExomeDepth)) # http://cran.r-project.org/web/packages/ExomeDepth/ExomeDepth.pdf
+    data(exons.hg19) # from ExomeDepth package
+    if (opt$verbose) {
+        cat("Loaded successfully.\n",file=stdout())
+    }
+}, error = function(cond) {
+    cat("Experienced an error trying to load the ExomeDepth package.\n",file=stderr())
+    print(cond, file=stderr())
+    stop()
+}, warning = function(cond) {
+    cat("We got a warning which probably means the ExomeDepth package isn't installed.\n\n",file=stderr())
+    cat("Try install.packages() or check whether you're using\n",file=stderr())
+    cat("the version of R for which you already installed it.\n\n",file=stderr())
+    print(cond, file=stderr())
+    stop()
+})
+
 
 if (opt$refexons != 'hg19') {
     cat("**Stopping execution because we don't support any reference except hg19.\n",file=stderr())
