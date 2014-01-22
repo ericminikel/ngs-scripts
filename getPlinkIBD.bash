@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # to run:
-# bsub -o /humgen/atgu1/fs03/eminikel/sandbox/getPlinkIBD.out "bash getPlinkIBD.bash -v -o /humgen/atgu1/fs03/eminikel/sandbox/3 -r /seq/dax/macarthur_muscle_disease_ALL/v1/macarthur_muscle_disease_ALL.vcf"
+# bsub -o /humgen/atgu1/fs03/eminikel/sandbox/getPlinkIBD.out -q bweek "bash getPlinkIBD.bash -v -o /humgen/atgu1/fs03/eminikel/sandbox/4 -r /seq/dax/macarthur_muscle_disease_ALL/v1/macarthur_muscle_disease_ALL.vcf"
 
 # The below code for parsing command line arguments was lightly modified from: 
 # http://stackoverflow.com/a/14203146
@@ -114,9 +114,15 @@ if test $nlines -lt 1000
         let j=$i
     done
     
-    # to do: now wait for all jobs with the name plinkibd to finish.
-    # just wait until
-    # `bjobs | grep plinkibd | wc -l` == 0
+    # now wait for the above jobs to all finish, updating the user every 60 seconds
+    while test `bjobs | grep plinkibd | wc -l` -gt 0
+    do
+      if test $verbose
+        then
+          echo "Waiting for" `bjobs | grep plinkibd | wc -l` "jobs to finish..."
+      fi
+      sleep 60
+    done
     
     if test $verbose
       then
