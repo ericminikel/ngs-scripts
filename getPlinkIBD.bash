@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # to run:
-# bsub -o /humgen/atgu1/fs03/eminikel/sandbox/getPlinkIBD.out -q bweek "bash getPlinkIBD.bash -v -o /humgen/atgu1/fs03/eminikel/sandbox/4 -r /seq/dax/macarthur_muscle_disease_ALL/v1/macarthur_muscle_disease_ALL.vcf"
+# bsub -o /humgen/atgu1/fs03/eminikel/sandbox/getPlinkIBD.out -q bweek -P $RANDOM "bash getPlinkIBD.bash -v -o /humgen/atgu1/fs03/eminikel/sandbox/5 -r /seq/dax/macarthur_muscle_disease_ALL/v1/macarthur_muscle_disease_ALL.vcf"
 
 # The below code for parsing command line arguments was lightly modified from: 
 # http://stackoverflow.com/a/14203146
@@ -65,9 +65,6 @@ fi
 # this literally takes 1 second - that doesn't mean it failed.
 plink --file $pedmapprefix --freq --out $pedmapprefix
 
-# split ped file into lists of 100 individuals for parallelization
-cut -d ' ' -f 1,2 $pedmapprefix.ped | split -d -a 3 -l 100 - $outdir/tmp.list
-
 # calculate number of samples. 
 # see http://stackoverflow.com/questions/9458752/variable-for-number-of-lines-in-a-file
 nlines=`cat $pedmapprefix.ped | wc -l`
@@ -93,6 +90,10 @@ if test $nlines -lt 1000
         echo "More than 999 samples, submitting tons of jobs to LSF"
         echo "to parallelize PLINK IBD calculations..."
     fi
+    
+    # split ped file into lists of 100 individuals for parallelization
+    cut -d ' ' -f 1,2 $pedmapprefix.ped | split -d -a 3 -l 100 - $outdir/tmp.list
+    
     # jobs will be like 1 second each. hour queue is fine.
     let i=0 a=$((nlines/100-1)) # a is number of files created by the above step, minus 1
     let j=0
@@ -100,7 +101,7 @@ if test $nlines -lt 1000
     do
         while [ $j -le $a ]
         do
-            bsub -q hour -o /dev/null -e /dev/null -J plinkibd \
+            bsub -q hour -o /dev/null -e /dev/null -J plinkibd -P $RANDOM \
                 plink --file $pedmapprefix \
                 --read-freq $pedmapprefix.frq\
                 --all \
