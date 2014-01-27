@@ -3,7 +3,7 @@
 # Eric Minikel
 # script to run ExomeDepth to get CNVs (Step 1)
 # how to run with no special options:
-# getExomeDepthCNVs.r -c /humgen/atgu1/fs03/eminikel/sandbox/counts2.rda -o /humgen/atgu1/fs03/eminikel/sandbox/3/ -e /humgen/atgu1/fs03/eminikel/sandbox/exclude.list
+# getExomeDepthCNVs.r -c /humgen/atgu1/fs03/eminikel/sandbox/counts2.rda -o /humgen/atgu1/fs03/eminikel/sandbox/3/ -e /humgen/atgu1/fs03/eminikel/sandbox/exclude.list -g /humgen/atgu1/fs03/eminikel/sandbox/sandbox.genome
 
 # A note on design:
 # We discussed having one list of samples to call CNVs on and another list of 
@@ -27,7 +27,7 @@ option_list = list(
               type='character', help="Full path to counts file"),
   make_option(c("-o", "--outdir"), action="store", default='./',
               type='character', help="Output directory for CNV calls [default %default]"),
-  make_option(c("-g", "--genome"), action="store", default='',
+  make_option(c("-g", "--genome"), action="store", default='', # recommend using long name --genome; otherwise R thinks -g is specifying the gui.
               type='character', help="PLINK .genome IBD file"),
   make_option(c("-e", "--exclude"), action="store", default='',
               type='character', help="txt file listing samples to exclude from reference"),
@@ -172,35 +172,9 @@ stopifnot(length(call_indices) > 0)
 
 call_names = colnames(countmat)[call_indices]
 
-if (file.exists(opt$exclude)) {
-    if(opt$verbose) {
-        cat(paste("Loading list to exclude from ",opt$exclude," ...\n",sep=""),file=stdout())
-    }
-    exclude_all = read.table(opt$exclude)$V1
-    # get the exclude_all list to match the R-ified BAM names used in the counts data
-    exclude_all = paste(make.names(exclude_all),".bam",sep="")
-
-    if(opt$verbose) {
-        cat(paste("Loaded.\n",sep=""),file=stdout())
-    }
-    if(opt$verbose) {
-        cat("The following samples will be excluded from the reference for all CNV calls:\n",file=stdout())
-        print(exclude_all,file=stdout())
-    }
-    
-} else if (opt$exclude == '') {
-    if(opt$verbose) {
-        cat(paste("No exclude all list (-e) detected, continuing...\n",sep=""),file=stdout())
-    }
-} else {
-    cat("**Exclude all list file not found. You specified this path:\n",file=stderr())
-    cat(paste(opt$exclude,"\n",sep=""),file=stderr())
-}
-
-
 # Now try to read .genome file
 if (file.exists(opt$genome)) {
-    if (opt$verbsose) {
+    if (opt$verbose) {
         cat(paste("Reading .genome IBD file from: ",opt$genome,
         "\nin order to exclude relateds from reference sets.\n\n",
         sep=""),file=stdout())
@@ -208,8 +182,8 @@ if (file.exists(opt$genome)) {
     genome = read.table(opt$genome,header=TRUE)
     exclude = genome[genome$PI_HAT > opt$threshold,c("IID1","IID2")]
     exclude_proportion = as.numeric(dim(exclude)[1]/dim(genome)[1])
-    if (opt$verbsose) {
-        cat(paste("Based on your threshold of ",threshold*100,"% IBD, ",
+    if (opt$verbose) {
+        cat(paste("Based on your threshold of ",opt$threshold*100,"% IBD, ",
             formatC(exclude_proportion*100,digits=2),"% of possible\n",
             "combinations of people will be excluded from the reference\n\n",
             sep=""),file=stdout())
@@ -255,6 +229,37 @@ if (file.exists(opt$genome)) {
     }
 }
 
+
+if (file.exists(opt$exclude)) {
+    if(opt$verbose) {
+        cat(paste("Loading list to exclude from ",opt$exclude," ...\n",sep=""),file=stdout())
+    }
+    exclude_all = read.table(opt$exclude)$V1
+    # get the exclude_all list to match the R-ified BAM names used in the counts data
+    exclude_all = paste(make.names(exclude_all),".bam",sep="")
+
+    if(opt$verbose) {
+        cat(paste("Loaded.\n",sep=""),file=stdout())
+    }
+    if(opt$verbose) {
+        cat("The following samples will be excluded from the reference for all CNV calls:\n",file=stdout())
+        print(exclude_all,file=stdout())
+    }
+    
+    for (individual in call_names) {
+            exclude_list[[individual]] = c(exclude_list[[individual]], exclude_all)
+    }
+    
+} else if (opt$exclude == '') {
+    if(opt$verbose) {
+        cat(paste("No exclude all list (-e) detected, continuing...\n",sep=""),file=stdout())
+    }
+} else {
+    cat("**Exclude all list file not found. You specified this path:\n",file=stderr())
+    cat(paste(opt$exclude,"\n",sep=""),file=stderr())
+}
+
+
 # now we are done reading input, so switch to output directory.
 if (file.exists(opt$outdir)) {
     setwd(opt$outdir)
@@ -272,7 +277,7 @@ for (i in call_indices) {
     sample_name = colnames(countmat)[i]
     if(opt$verbose) {
         cat(paste("Now about to call CNVs on ",sample_name,"...",sep=""),file=stdout())
-        cat("Excluding the following samples from reference due to IBD:\n",file=stdout())
+        cat("Excluding the following samples from reference:\n",file=stdout())
         print(exclude_list[[sample_name]],file=stdout())
     }
     
