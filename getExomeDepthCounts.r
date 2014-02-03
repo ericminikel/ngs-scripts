@@ -1,5 +1,6 @@
 #!/broad/software/free/Linux/redhat_5_x86_64/pkgs/r_3.0.2/bin/Rscript
 
+
 # Eric Minikel
 # script to run ExomeDepth to get counts (Step 1)
 # how to run:
@@ -20,6 +21,8 @@ options(stringsAsFactors=FALSE) # crucial for handling BAM filenames as strings
 option_list = list(
   make_option(c("-b", "--bamlist"), action="store", default='', 
               type='character', help="Path to list of BAMs"),
+  make_option(c("-s", "--singlebam"), action="store", default='',
+              type='character', help="Path to a single BAM"),
   make_option(c("-o", "--outpath"), action="store", default='./',
               type='character', help="Output path to store counts [default %default]"),
   make_option(c("-r", "--refexons"), action="store", default='hg19',
@@ -71,20 +74,24 @@ if (opt$refexons != 'hg19') {
     stop()
 }
 
-if (opt$verbose) {
-    cat("Reading list of BAMs...\n",file=stdout())
-}
-
-
 # read list of BAMs
 # to avoid writing a tryCatch I use file.exists, and set default to '', which is
 # a file that never exists.
 if (file.exists(opt$bamlist)) {
+    if (opt$verbose) {
+        cat(paste("Reading list of BAMs from ",opt$bamlist,"\n",file=stdout())
+    }
     # read bam list directly into a vector (note use of $V1)
     bams = read.table(opt$bamlist,header=FALSE)$V1
+} else if (file.exists(opt$singlebam) {
+    if (opt$verbose) {
+        cat(paste("Will run on single BAM: ",opt$singlebam,"\n",file=stdout())
+    }
+    bams = c(opt$singlebam)
 } else {
-    cat("**You need to specify a valid BAM list using -b.\n",file=stderr())
-    cat(paste("The filename you specified was '",opt$bamlist,"'.",sep=''),file=stderr())
+    cat("**You need to specify a valid BAM list using -b or single BAM using -s.\n",file=stderr())
+    cat(paste("The BAM list you specified was '",opt$bamlist,"'.",sep=''),file=stderr())
+    cat(paste("The single BAM you specified was '",opt$singlebam,"'.",sep=''),file=stderr())
     stop()
 }
 
