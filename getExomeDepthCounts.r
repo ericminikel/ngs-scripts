@@ -79,28 +79,28 @@ if (opt$refexons != 'hg19') {
 # a file that never exists.
 if (file.exists(opt$bamlist)) {
     if (opt$verbose) {
-        cat(paste("Reading list of BAMs from ",opt$bamlist,"\n",file=stdout())
+        cat(paste("Reading list of BAMs from ",opt$bamlist,"\n"),file=stdout())
     }
     # read bam list directly into a vector (note use of $V1)
     bams = read.table(opt$bamlist,header=FALSE)$V1
-} else if (file.exists(opt$singlebam) {
     if (opt$verbose) {
-        cat(paste("Will run on single BAM: ",opt$singlebam,"\n",file=stdout())
+        cat(paste("Successfully read the BAM list from ",opt$bamlist,"\n",sep=''),file=stdout())
+        cat("Using the following BAMs: \n",file=stdout())
+        write.table(bams,row.names=FALSE,quote=FALSE,col.names=FALSE,file=stdout())
     }
+
+} else if (file.exists(opt$singlebam)) {
     bams = c(opt$singlebam)
+    if (opt$verbose) {
+        cat(paste("Will read single BAM from: ","\n",sep=''),file=stdout())
+        write.table(bams,row.names=FALSE,quote=FALSE,col.names=FALSE,file=stdout())
+    }
 } else {
     cat("**You need to specify a valid BAM list using -b or single BAM using -s.\n",file=stderr())
     cat(paste("The BAM list you specified was '",opt$bamlist,"'.",sep=''),file=stderr())
     cat(paste("The single BAM you specified was '",opt$singlebam,"'.",sep=''),file=stderr())
     stop()
 }
-
-if (opt$verbose) {
-    cat(paste("Successfully read the BAM list from ",opt$bamlist,"\n",sep=''),file=stdout())
-    cat("Using the following BAMs: \n",file=stdout())
-    write.table(bams,row.names=FALSE,quote=FALSE,col.names=FALSE,file=stdout())
-}
-
 
 # read output directory
 # note right now if not existent, I stop execution. 
