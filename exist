@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# reads from stdin or a file and prints out which listed filenames
+# refer to files that do not exist.
+
+while read filename
+do
+  [ -f $filename ] && echo "$filename"
+done < ${1:-/proc/${$}/fd/0}  # read from cl argument OR stdin
