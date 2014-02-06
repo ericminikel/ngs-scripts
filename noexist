@@ -5,5 +5,5 @@
 
 while read filename
 do
-  [ ! -f $filename ] && echo "$filename" does not exist
+  [ ! -f $filename ] && echo "$filename"
 done < ${1:-/proc/${$}/fd/0}  # read from cl argument OR stdin
