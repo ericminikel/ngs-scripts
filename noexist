@@ -3,8 +3,7 @@
 # reads from stdin or a file and prints out which listed filenames
 # refer to files that do not exist.
 
-inp=${1:-/proc/${$}/fd/0} # read from cl argument OR stdin
 while read filename
 do
   [ ! -f $filename ] && echo "$filename" does not exist
-done
+done < ${1:-/proc/${$}/fd/0}  # read from cl argument OR stdin
