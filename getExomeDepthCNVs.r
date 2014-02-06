@@ -75,22 +75,22 @@ tryCatch ({
     stop()
 })
 
-if (file.exists(opt$countsfile)) {
-    if(opt$verbose) {
-        cat(paste("Loading count data from ",opt$countsfile," ...\n",sep=""),file=stdout())
-    }
-    load(opt$countsfile) # this contains an S4 object called "counts"
-    if(opt$verbose) {
-        cat(paste("Loaded.\n",sep=""),file=stdout())
-    }
-    stopifnot(exists("counts")) # assert that a counts object was loaded & now exists
-    if(opt$verbose) {
-        cat("Successfully loaded count data.\n",file=stdout())
-    }
-} else {
-    cat("**Count file not found. You specified this path:\n",file=stderr())
-    cat(paste(opt$countsfile,"\n",sep=""),file=stderr())
-}
+# if (file.exists(opt$countsfile)) {
+#     if(opt$verbose) {
+#         cat(paste("Loading count data from ",opt$countsfile," ...\n",sep=""),file=stdout())
+#     }
+#     load(opt$countsfile) # this contains an S4 object called "counts"
+#     if(opt$verbose) {
+#         cat(paste("Loaded.\n",sep=""),file=stdout())
+#     }
+#     stopifnot(exists("counts")) # assert that a counts object was loaded & now exists
+#     if(opt$verbose) {
+#         cat("Successfully loaded count data.\n",file=stdout())
+#     }
+# } else {
+#     cat("**Count file not found. You specified this path:\n",file=stderr())
+#     cat(paste(opt$countsfile,"\n",sep=""),file=stderr())
+# }
 
 # counts is an S4 object.
 # you need to cast it to a data frame (for bin length)
@@ -99,7 +99,7 @@ if (file.exists(opt$countsfile)) {
 if(opt$verbose) {
     cat("Casting count data to a data frame...\n",file=stdout())
 }
-countdf = as.data.frame(counts)
+countdf = read.table(opt$countsfile,sep="\t",header=TRUE) # as.data.frame(counts)
 if(opt$verbose) {
     cat("Column names in the count data frame:\n",file=stdout())
     print(colnames(countdf),file=stdout())
@@ -110,6 +110,12 @@ if(opt$verbose) {
     cat("Casting count data to a matrix...\n",file=stdout())
 }
 countmat = as.matrix(countdf[,6:dim(countdf)[2]]) # remove cols 1-5 metadata
+
+if(opt$verbose) {
+    cat("OK, here's the head of the matrix...\n",file=stdout())
+    #print(head(countmat),file=stdout())
+    # it was too big and made the output hard to read
+}
 
 # prependX = function(bamnames) {
     # modified_names = bamnames
@@ -161,6 +167,10 @@ if(opt$callsamples=='') {
         } else {
             cat("**Didn't find any specified sample names in the counts file.\n",file=stdout())
         }
+    } else {
+        cat("Couldn't find the callsamples list you specified with -s: \n",file=stderr())
+        cat(paste(opt$callsamples),"\n",file=stderr())
+        stop()
     }
 }
 
@@ -254,7 +264,8 @@ if (file.exists(opt$exclude)) {
     if(opt$verbose) {
         cat(paste("No exclude all list (-e) detected, continuing...\n",sep=""),file=stdout())
     }
-} else {
+    exclude_all = character(0) # just make it an empty vector
+ } else {
     cat("**Exclude all list file not found. You specified this path:\n",file=stderr())
     cat(paste(opt$exclude,"\n",sep=""),file=stderr())
 }
@@ -289,10 +300,20 @@ for (i in call_indices) {
     # the sample itself as well as all IBD-excluded samples from the
     # set of potential references.
     reference_list = select.reference.set(test.counts = countmat[,i], 
-        reference.count = countmat[,c(-i,-exclude_indices)],
+        reference.count = as.matrix(countmat[,c(-i,-exclude_indices)]), # as.matrix in case only 1 col
         bin.length=(countdf$end-countdf$start)/1000,
         n.bins.reduced = 10000)
     
+    if(opt$verbose) {
+        cat("Using the following samples as reference:\n",file=stdout())
+    }
+    # whether verbose or not, write to disk what the reference set was, for later use
+    refpath = paste(sample_name,".reflist.txt",sep="")
+    cat(paste("# SAMPLE: ",sample_name,"\n",sep=""),file=refpath)
+    cat(paste("# REFERENCE: ",paste(reference_list$reference.choice,collapse=" "),"\n",sep=""),file=refpath,append=TRUE)
+    cat(paste(paste(colnames(countmat),collapse="\t"),"\n",sep=""),file=refpath,append=TRUE)
+    cat(paste(paste(1*(colnames(countmat) %in% reference_list$reference.choice),collapse="\t"),"\n",sep=""),file=refpath,append=TRUE)
+
     reference_set = apply(
         X = as.matrix(countdf[, reference_list$reference.choice]), 
         MAR=1, FUN=sum)
@@ -305,8 +326,11 @@ for (i in call_indices) {
         chromosome=countdf$space, start=countdf$start,
         end=countdf$end, name=countdf$names)
     
-    write.table(all_exons@CNV.calls, file=paste(sample_name,".txt",sep=''), 
-        sep='\t', row.names=FALSE, col.names=TRUE, quote=FALSE)
+    # write out cnv calls
+    cnvpath = paste(sample_name,".csv",sep='')
+    cat(",",file=cnvpath) # to *exactly* match Fengmei's file format, need an initial comma.
+    write.table(all_exons@CNV.calls, file=cnvpath, append=TRUE,
+        sep=',', row.names=TRUE, col.names=TRUE, quote=FALSE)
     
     if (opt$verbose) {
         cat(paste("..done.\n",sep=''),file=stdout())
