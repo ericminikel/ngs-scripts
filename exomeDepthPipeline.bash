@@ -6,23 +6,24 @@
 
 # to test run:
 # cd /humgen/atgu1/fs03/eminikel/048muscle/data/
-# bsub -q priority -W 00:15 -P$RANDOM -J pipetest \
-#      -o fulltest/pipeline.out -e fulltest/pipeline.err \
-"exomeDepthPipeline.bash \
--o /humgen/atgu1/fs03/eminikel/048muscle/data/fulltest \
--b /humgen/atgu1/fs03/eminikel/048muscle/data/muscle.20.test.list \
--e /humgen/atgu1/fs03/eminikel/048muscle/data/exclude.list \
--g /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf.genome"
+# bsub -q bweek -W 167:00 -P $RANDOM -J edpipe \
+#       -o /humgen/atgu1/fs03/eminikel/048muscle/data/fulltest/pipeline.out \
+#       -e /humgen/atgu1/fs03/eminikel/048muscle/data/fulltest/pipeline.err \
+# "exomeDepthPipeline.bash \
+# -o /humgen/atgu1/fs03/eminikel/048muscle/data/fulltest \
+# -b /humgen/atgu1/fs03/eminikel/048muscle/data/muscle.20.test.list \
+# -r /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf \
+# -e /humgen/atgu1/fs03/eminikel/048muscle/data/exclude.list"
 
 # to really run:
 # cd /humgen/atgu1/fs03/eminikel/048muscle/data/
-bsub -q bweek -W 167:00 -P$RANDOM -J edpipe \
-     -o fulltest/pipeline.out -e fulltest/pipeline.err \
- "exomeDepthPipeline.bash \
- -o /humgen/atgu1/fs03/eminikel/048muscle/data/fulltest \
- -b /humgen/atgu1/fs03/eminikel/048muscle/data/MD1.existent.bam.list \
- -e /humgen/atgu1/fs03/eminikel/048muscle/data/exclude.list \
- -r /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf"
+# bsub -q bweek -W 167:00 -P$RANDOM -J edpipe \
+#      -o fulltest/pipeline.out -e fulltest/pipeline.err \
+#  "exomeDepthPipeline.bash \
+#  -o /humgen/atgu1/fs03/eminikel/048muscle/data/fulltest \
+#  -b /humgen/atgu1/fs03/eminikel/048muscle/data/MD1.existent.bam.list \
+#  -e /humgen/atgu1/fs03/eminikel/048muscle/data/exclude.list \
+#  -r /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf"
 
 # choose one of these two options:
 # -r /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf
@@ -42,12 +43,13 @@ vcf="" # -r for "raw vcf" because -v was taken by "verbose"
 bamlist="" 
 genome=""
 excludelist=""
+havecounts=0
 
 # Constants
 # list of 5k snps for IBD, in 2-column format: chromosome and position
 ibdsnplist=/humgen/atgu1/fs03/DM-Lab/ref/Purcell5k.2col.txt
 
-while getopts "vo:b:r:g:e:" opt; do
+while getopts "vo:b:r:g:e:c" opt; do
     case "$opt" in
     v)  verbose=1
         ;;
@@ -61,6 +63,8 @@ while getopts "vo:b:r:g:e:" opt; do
         ;;
     e)  excludelist=$OPTARG
         ;;
+    c)  havecounts=1
+        ;;
     esac
 done
 
@@ -71,49 +75,74 @@ shift $((OPTIND-1))
 if test $verbose
   then
     echo "verbose=$verbose, 
-          output_directory='$outdir', 
+          outdir='$outdir', 
           vcf='$vcf', 
           genome='$genome', 
           bamlist='$bamlist', 
           excludelist='$excludelist', 
+          havecounts='$havecounts'
           unused arguments: $@"
 fi
 
-# temporary settings for testing
-outdir=/humgen/atgu1/fs03/eminikel/048muscle/data/fulltest
-bamlist=/humgen/atgu1/fs03/eminikel/048muscle/data/muscle.bam.existent.list
-excludelist=/humgen/atgu1/fs03/eminikel/048muscle/data/exclude.list
-vcf=/humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf
-genome=/humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf.genome
+
+
+# temporary settings for testing - uncomment to run this script piece by piece
+# outdir=/humgen/atgu1/fs03/eminikel/048muscle/data/fulltest
+# bamlist=/humgen/atgu1/fs03/eminikel/048muscle/data/muscle.bam.existent.list
+# excludelist=/humgen/atgu1/fs03/eminikel/048muscle/data/exclude.list
+# vcf=/humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf
+# genome=/humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf.genome
+# countsfile=/humgen/atgu1/fs03/eminikel/048muscle/data/fulltest/merged.counts
+
+# create a clutter directory for LSF job outputs
+mkdir -p $outdir/clutter # -p means if not already exists
+
+# count number of bams for later jobarrays
+nbam=`wc -l $bamlist | cut -d ' ' -f1`
+# make sure $nbam is an integer
+nbam=$(($nbam + 1))
+nbam=$(($nbam - 1)) # yes, this is stupid, but no, $nbam + 0 *doesn't* cast it to int.
+
+if test $verbose -eq 1
+  then
+    echo "Step 1..."
+fi
 
 
 # Step 1: counts
-# Parallelize the calculation of ExomeDepth counts, then merge back together
-if test bamlist == ""
-	then
-      echo "You didn't specify a list of BAMs using -b. Exiting w/ code 1"
-      exit 1
-    else
-      if test $verbose
-        then
-          echo "Using BAM list: $bamlist"
-      fi
-      # parallelize by submitting a jobarray with one job per single bam
-      nbam=`wc -l $bamlist | cut -d ' ' -f1`
-      # make sure $nbam is an integer
-      nbam=$(($nbam + 1))
-      nbam=$(($nbam - 1)) # yes, this is stupid, but no, $nbam + 0 *doesn't* cast it to int.
-
-      mkdir $outdir/clutter
-      bsub -o $outdir/clutter/ExomeDepthCountJobOutput_%I.out \
-           -e $outdir/clutter/ExomeDepthCountJobOutput_%I.err \
-           -q bweek -P $RANDOM -J exdep[1-$nbam] -W 10:00 \
-           "getExomeDepthCounts.r -s \`sed -n \${LSB_JOBINDEX}p $bamlist\` -o $outdir"
+if test $havecounts -eq 1 # if the user specifies -c, then skip and use existing counts.
+  then
+    if test $verbose -eq 1
+      then
+        echo "Using existing *.counts.txt files in this dir: $outdir"
+    fi
+  else
+    if test bamlist == ""
+    	then
+          echo "You didn't specify a list of BAMs using -b. Exiting w/ code 1"
+          exit 1
+        else
+          if test $verbose
+            then
+              echo "Using BAM list: $bamlist"
+          fi
+    
+          # Parallelize the calculation of ExomeDepth counts, later merge back together
+          bsub -o $outdir/clutter/ExomeDepthCountJobOutput_%I.out \
+               -e $outdir/clutter/ExomeDepthCountJobOutput_%I.err \
+               -q bweek -P $RANDOM -J excnt[1-$nbam] -W 10:00 \
+               "getExomeDepthCounts.r -s \`sed -n \${LSB_JOBINDEX}p $bamlist\` -o $outdir"
+    fi
 fi
 
-# bash one-liner to test the above method
-# bsub -o %I.out -e %I.err -q bhour -P $RANDOM -J jtest[1-5] -W 00:01 "echo \$LSB_JOBINDEX > \$LSB_JOBINDEX.internal.out"
 
+# bash one-liner to test the above method of submitting jobarrays
+# bsub -o %I.out -e %Ierr -q bhour -P $RANDOM -J jtest[1-5] -W 00:01 "echo \$LSB_JOBINDEX > \$LSB_JOBINDEX.internal.out"
+
+if test $verbose
+  then
+    echo "Step 2..."
+fi
 
 
 # Step 2: relatedness
@@ -141,13 +170,25 @@ if test genome == ""
 fi
 
 
+if test $verbose
+  then
+    echo "Interlude: waiting for Step 1 jobs..."
+fi
+
+
 # Interlude: loop and wait to make sure the jobs from Step 1 are done.
-while test $((`bjobs | grep exdep | wc -l`)) -gt 0
+while test $((`bjobs | grep excnt | wc -l`)) -gt 0
 do
-    echo -n "Waiting for" $((`bjobs | grep exdep | wc -l`)) 
+    echo -n "Waiting for" $((`bjobs | grep excnt | wc -l`)) 
     echo " ExomeDepth count jobs to finish"
 	sleep 60
 done
+
+if test $verbose
+  then
+    echo "Step 3..."
+fi
+
 
 # Step 3:
 # Fuse the counts back together
@@ -169,6 +210,12 @@ cd -
 # now set the countsfile variable to what we used above.
 countsfile=$outdir/merged.counts
 
+if test $verbose
+  then
+    echo "Creating lists of samples to call CNVs on..."
+fi
+
+
 # create lists of samples to call CNVs on in next step
 # for now do it so each file contains 1 name.
 for i in $(seq 1 $nbam)
@@ -176,33 +223,55 @@ do
     basename `sed -n ${i}p $bamlist`  | awk '{print "echo \""$1"\" > "$1".blist"}' | bash
 done
 
-cat *.blist > all.samples.blist
+cat *.blist > all.samples.bamnames
+
+if test $verbose
+  then
+    echo "Step 4..."
+fi
+
 
 # Step 4: Call CNVs using the counts and .genome file
 # parallelize this by each individual sample
-bsub -o $outdir/ExomeDepthCNVJobOutput_%I.out \
-     -e $outdir/ExomeDepthCNVJobOutput_%I.err \
-     -q bhour -P $RANDOM -J exdep[1-$nbam] -W 00:45 \
-     "getExomeDepthCNVs.r -c $countsfile -s \`sed -n \${LSB_JOBINDEX}p all.samples.blist\`.blist -g $genome -t .15 -e $excludelist -o $outdir"
+bsub -o $outdir/clutter/ExomeDepthCNVJobOutput_%I.out \
+     -e $outdir/clutter/ExomeDepthCNVJobOutput_%I.err \
+     -q bhour -P $RANDOM -J excnv[1-$nbam] -W 00:45 \
+     "getExomeDepthCNVs.r -c $countsfile -s \`sed -n \${LSB_JOBINDEX}p all.samples.bamnames\`.blist --genome $genome -t .15 -e $excludelist -o $outdir"
 
-# Step 5. Now create a read ratio matrix and combined matrix from counts
-# this could go before Step 4 but since Step 4 is slow, might as well get those jobs
-# submitted and then do step 5 while waiting
-bsub -o $outdir/exomedepth/clutter/2/RatioMatrixJobOutput.out \
-     -e $outdir/exomedepth/clutter/2/RatioMatrixJobOutput.err \
-     -q bweek -P $RANDOM -J ratmat -W 05:00 \
-     "ratioMatrix.r -c $countsfile -r -o $outdir"
+if test $verbose
+  then
+    echo "Waiting for Step 4 jobs to finish..."
+fi
 
 # Outro: loop and wait to make sure the jobs from Step 4 are done.
-while test $((`bjobs | grep exdep | wc -l`)) -gt 0
+while test $((`bjobs | grep excnv | wc -l`)) -gt 0
 do
-    echo -n "Waiting for" $((`bjobs | grep exdep | wc -l`)) 
+    echo -n "Waiting for" $((`bjobs | grep excnv | wc -l`)) 
     echo " ExomeDepth CNV jobs to finish"
   sleep 60
 done
 
+
+if test $verbose
+  then
+    echo "Step 5..."
+fi
+
+# Step 5. Now create a read ratio matrix and combined matrix from counts
+# this could go before Step 4 but since Step 4 is slow, might as well get those jobs
+# submitted and then do step 5 while waiting
+bsub -o $outdir/clutter/RatioMatrixJobOutput.out \
+     -e $outdir/clutter/RatioMatrixJobOutput.err \
+     -q bhour -P $RANDOM -J ratmat -W 00:30 \
+     "ratioMatrix.r -c $countsfile -r $outdir -o $outdir"
+
+if test $verbose
+  then
+    echo "Waiting for Step 5 jobs to finish..."
+fi
+
 # Outro: loop and wait to make sure the jobs from Step 5 are also done.
-while test $((`bjobs | grep exdep | wc -l`)) -gt 0
+while test $((`bjobs | grep ratmat | wc -l`)) -gt 0
 do
     echo -n "Waiting for" $((`bjobs | grep ratmat | wc -l`)) 
     echo " ExomeDepth read ratio matrix jobs to finish"
@@ -210,16 +279,16 @@ do
 done
 
 
-
 echo "Wow, if you got here, then amazingly this whole pipeline actually worked."
 echo "Now exiting with code 0"
 
 exit 0
 
-
+###############
+################
 # below is stuff that I'm using to run some steps manually during testing.
 
-countsfile=/humgen/atgu1/fs03/eminikel/048muscle/data/merged.counts 
+countsfile=/humgen/atgu1/fs03/eminikel/048muscle/data/fulltest/merged.counts 
 genome=/humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf.genome
 excludelist=/humgen/atgu1/fs03/eminikel/048muscle/data/exclude.list
 outdir=/humgen/atgu1/fs03/eminikel/048muscle/data
