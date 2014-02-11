@@ -1,7 +1,7 @@
 #!/broad/software/free/Linux/redhat_5_x86_64/pkgs/r_3.0.2/bin/Rscript
 
 # converts an ExomeDepth counts matrix to a ratio matrix
-
+# note: on the 202 muscle BAMs this takes 14 minutes.
 
 start_time = Sys.time()
 
@@ -34,7 +34,10 @@ if (opt$verbose) {
 
 # open the counts table or stop if it can't be found
 if(file.exists(opt$countsfile)) {
-    countdf = read.table(opt$countsfile,sep="\t",col.names=TRUE,row.names=FALSE,quote=FALSE)
+    if (opt$verbose) {
+        cat(paste("Reading counts file: ",opt$countsfile,"\n",sep=""),file=stdout())
+    }
+    countdf = read.table(opt$countsfile,sep="\t",header=TRUE,quote='')
 } else {
     cat("Couldn't find the counts file you specified with -c: \n",file=stderr())
     cat(paste(opt$countsfile,"\n"),file=stderr())
@@ -84,7 +87,12 @@ expectedmat = ratiomat # just to initialize with same names and dimensions
 # now loop through and populate the ratio matrix
 for (i in 1:dim(countmat)[2]) {
     sample_name = colnames(countmat)[i]
-    refpath = paste(opt$reflistdir,"/",sample_name,".reflist.txt",sep="")
+
+    if (opt$verbose) {
+        cat(paste("Now working on ",sample_name,"...\n",sep=""),file=stdout())
+    }
+
+    refpath = paste(opt$reflistdir,"/",make.names(sample_name),".reflist.txt",sep="")
     reflist = read.table(refpath,skip=2,sep="\t",header=TRUE)
     
     # check that the samples are in the same order
@@ -93,22 +101,31 @@ for (i in 1:dim(countmat)[2]) {
     # grab a boolean vector for indexing columns - "was each sample used as reference?"
     ref_used = reflist[1,] == 1
 
-    expectedmat[,i] = rowMeans(countmat[,ref_used]) # calculate expected based on ref samples
+    expectedmat[,i] = rowMeans(matrix(countmat[,ref_used],nrow=dim(countmat)[1])) # calculate expected based on ref samples
     ratiomat[,i] = countmat[,i] / expectedmat[,i] # ratio obs/exp
+}
+
+
+if (opt$verbose) {
+    cat(paste("Writing readratio.txt to disk...\n",sep=""),file=stdout())
 }
 
 # put back into a dataframe and write out to disk
 ratiodf = cbind(countdf[,1:5],as.data.frame(ratiomat))
 write.table(ratiodf,"readratio.txt",row.names=FALSE,col.names=TRUE,sep="\t")
 
+
+if (opt$verbose) {
+    cat(paste("Writing obs-exp-ratio.txt to disk...\n",sep=""),file=stdout())
+}
+
 # also try a semicolon-delimited VCF-like version
 # because OBS/EXP can be more useful than NaN when expectation is low
 combinedmat = matrix(paste(observedmat,expectedmat,ratiomat,sep=";"),
     nrow=dim(ratiomat)[1],ncol=dim(ratiomat)[2])
 combodf = cbind(countdf[,1:5],as.data.frame(combinedmat))
-write.table(combodf,"obs-exp-ratio.txt",row.names=FALSE,col.names=TRUE,sep="\t")
-
-
+colnames(combodf) = colnames(countdf)
+write.table(combodf,"obs-exp-ratio.txt",row.names=FALSE,col.names=TRUE,sep="\t",quote=FALSE)
 
 duration = format(Sys.time() - start_time)
 

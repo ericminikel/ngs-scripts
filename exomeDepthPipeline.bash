@@ -11,17 +11,17 @@
 #       -e /humgen/atgu1/fs03/eminikel/048muscle/data/fulltest/pipeline.err \
 # "exomeDepthPipeline.bash \
 # -o /humgen/atgu1/fs03/eminikel/048muscle/data/fulltest \
-# -b /humgen/atgu1/fs03/eminikel/048muscle/data/muscle.20.test.list \
+# -b /humgen/atgu1/fs03/eminikel/048muscle/data/MD1.existent.bam.list \
 # -r /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf \
 # -e /humgen/atgu1/fs03/eminikel/048muscle/data/exclude.list"
 
 # to really run:
 # cd /humgen/atgu1/fs03/eminikel/048muscle/data/
 # bsub -q bweek -W 167:00 -P$RANDOM -J edpipe \
-#      -o fulltest/pipeline.out -e fulltest/pipeline.err \
+#      -o pipeout/pipeline.out -e pipeout/pipeline.err \
 #  "exomeDepthPipeline.bash \
-#  -o /humgen/atgu1/fs03/eminikel/048muscle/data/fulltest \
-#  -b /humgen/atgu1/fs03/eminikel/048muscle/data/MD1.existent.bam.list \
+#  -o /humgen/atgu1/fs03/eminikel/048muscle/data/pipeout \
+#  -b /humgen/atgu1/fs03/eminikel/048muscle/data/FMZ.248.list \
 #  -e /humgen/atgu1/fs03/eminikel/048muscle/data/exclude.list \
 #  -r /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf"
 
@@ -97,6 +97,18 @@ fi
 # create a clutter directory for LSF job outputs
 mkdir -p $outdir/clutter # -p means if not already exists
 
+if test "$bamlist" = ""
+  then
+      echo "You didn't specify a list of BAMs using -b. Exiting w/ code 1"
+      exit 1
+  else
+    if [ ! -f $bamlist ]
+      then
+        echo "BAM list you specified doesn't exist: $bamlist \n Exiting w/ code 1"
+        exit 1
+    fi
+fi
+
 # count number of bams for later jobarrays
 nbam=`wc -l $bamlist | cut -d ' ' -f1`
 # make sure $nbam is an integer
@@ -117,22 +129,16 @@ if test $havecounts -eq 1 # if the user specifies -c, then skip and use existing
         echo "Using existing *.counts.txt files in this dir: $outdir"
     fi
   else
-    if test bamlist == ""
-    	then
-          echo "You didn't specify a list of BAMs using -b. Exiting w/ code 1"
-          exit 1
-        else
-          if test $verbose
-            then
-              echo "Using BAM list: $bamlist"
-          fi
-    
-          # Parallelize the calculation of ExomeDepth counts, later merge back together
-          bsub -o $outdir/clutter/ExomeDepthCountJobOutput_%I.out \
-               -e $outdir/clutter/ExomeDepthCountJobOutput_%I.err \
-               -q bweek -P $RANDOM -J excnt[1-$nbam] -W 10:00 \
-               "getExomeDepthCounts.r -s \`sed -n \${LSB_JOBINDEX}p $bamlist\` -o $outdir"
+    if test $verbose
+      then
+        echo "Using BAM list: $bamlist"
     fi
+    
+    # Parallelize the calculation of ExomeDepth counts, later merge back together
+    bsub -o $outdir/clutter/ExomeDepthCountJobOutput_%I.out \
+         -e $outdir/clutter/ExomeDepthCountJobOutput_%I.err \
+         -q bweek -P $RANDOM -J excnt[1-$nbam] -W 10:00 \
+         "getExomeDepthCounts.r -s \`sed -n \${LSB_JOBINDEX}p $bamlist\` -o $outdir"
 fi
 
 
@@ -147,26 +153,26 @@ fi
 
 # Step 2: relatedness
 # Check if we have a .genome file. If not, create one.
-if test genome == ""
+if [[ $genome == "" ]]
 	then
 	  if test $verbose
         then
           echo "Creating a .genome file..."
-      fi
-      # since the getPlinkIBD.bash step is already as parallel as it's going to get,
-      # just run it directly from this script rather than submitting a job.
-	  bash getPlinkIBD.bash -v -o $outdir -r $vcf
+    fi
+    # since the getPlinkIBD.bash step is already as parallel as it's going to get,
+    # just run it directly from this script rather than submitting a job.
+	  getPlinkIBD.bash -v -o $outdir -r $vcf
 	  # now grab the genome file created by that script
-      genome=$outdir/$(basename $vcf)
-      if test $verbose
-        then
-          echo "New .genome file is: $genome"
-      fi
-    else
-      if test $verbose
-        then
-          echo "Using existing .genome file: $genome"
-      fi
+    genome=$outdir/$(basename $vcf).genome
+    if test $verbose
+      then
+        echo "New .genome file is: $genome"
+    fi
+  else
+    if test $verbose
+      then
+        echo "Using existing .genome file: $genome"
+    fi
 fi
 
 
@@ -230,6 +236,11 @@ if test $verbose
     echo "Step 4..."
 fi
 
+if test $verbose
+  then
+    echo "Here's what the ExomeDepth CNV calls will look like:"
+    echo "getExomeDepthCNVs.r -c $countsfile -s \`sed -n \${LSB_JOBINDEX}p all.samples.bamnames\`.blist --genome $genome -t .15 -e $excludelist -o $outdir"
+fi
 
 # Step 4: Call CNVs using the counts and .genome file
 # parallelize this by each individual sample

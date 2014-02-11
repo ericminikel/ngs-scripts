@@ -4,7 +4,7 @@
 # Eric Minikel
 # script to run ExomeDepth to get counts (Step 1)
 # how to run:
-# getExomeDepthCounts.r -b bamlist.txt -o /output/path/and/filename.rda -v > runExomeDepthOutput.txt
+# getExomeDepthCounts.r -b bamlist.txt -o /output/path/without/final/slash -v > runExomeDepthOutput.txt
 
 # A note on design:
 # ExomeDepth does not provide native capability to merge counts from multiple files
@@ -128,10 +128,20 @@ if (opt$verbose) {
     cat(paste(opt$outpath,"\n",sep=""),file=stdout())
 }
 
-save(counts,file=filename)
+# old method: save counts as IRanges object in an RData file
+# save(counts,file=filename)
+
+# new method: save counts as a text file
+# If operating in multi-BAM mode, save all to counts.txt
+if (file.exists(opt$bamlist)) {
+    countspath = paste(opt$outpath,"/counts.txt",sep="")
+} else  {
+    countspath = paste(opt$outpath,"/",gsub(".bam",".counts.txt",basename(opt$singlebam)),sep="")
+}
+write.table(counts,countspath,sep="\t",col.names=TRUE,row.names=FALSE,quote=FALSE)
 
 if (opt$verbose) {
-    cat(paste("Successfully wrote counts to: ",opt$outpath,"\n",sep=""),file=stdout())
+    cat(paste("Successfully wrote counts to: ",countspath,"\n",sep=""),file=stdout())
 }
 
 duration = format(Sys.time() - start_time)
