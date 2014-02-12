@@ -7,10 +7,10 @@
 # to test run:
 # cd /humgen/atgu1/fs03/eminikel/048muscle/data/
 # bsub -q bweek -W 167:00 -P $RANDOM -J edpipe \
-#       -o /humgen/atgu1/fs03/eminikel/048muscle/data/fulltest/pipeline.out \
-#       -e /humgen/atgu1/fs03/eminikel/048muscle/data/fulltest/pipeline.err \
+#       -o /humgen/atgu1/fs03/eminikel/048muscle/data/exdep/pipeline.out \
+#       -e /humgen/atgu1/fs03/eminikel/048muscle/data/exdep/pipeline.err \
 # "exomeDepthPipeline.bash \
-# -o /humgen/atgu1/fs03/eminikel/048muscle/data/fulltest \
+# -o /humgen/atgu1/fs03/eminikel/048muscle/data/exdep \
 # -b /humgen/atgu1/fs03/eminikel/048muscle/data/MD1.existent.bam.list \
 # -r /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf \
 # -e /humgen/atgu1/fs03/eminikel/048muscle/data/exclude.list"

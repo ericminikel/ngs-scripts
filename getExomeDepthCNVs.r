@@ -68,11 +68,10 @@ tryCatch ({
     print(cond, file=stderr())
     stop()
 }, warning = function(cond) {
-    cat("We got a warning which probably means the ExomeDepth package isn't installed.\n\n",file=stderr())
-    cat("Try install.packages() or check whether you're using\n",file=stderr())
+    cat("We got a warning which might or might not mean the ExomeDepth package isn't installed.\n\n",file=stderr())
+    cat("If so, try install.packages() or check whether you're using\n",file=stderr())
     cat("the version of R for which you already installed it.\n\n",file=stderr())
     print(cond, file=stderr())
-    stop()
 })
 
 # if (file.exists(opt$countsfile)) {
