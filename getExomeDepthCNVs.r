@@ -67,12 +67,15 @@ tryCatch ({
     cat("Experienced an error trying to load the ExomeDepth package.\n",file=stderr())
     print(cond, file=stderr())
     stop()
-}, warning = function(cond) {
-    cat("We got a warning which might or might not mean the ExomeDepth package isn't installed.\n\n",file=stderr())
-    cat("If so, try install.packages() or check whether you're using\n",file=stderr())
-    cat("the version of R for which you already installed it.\n\n",file=stderr())
-    print(cond, file=stderr())
 })
+##### can't include this warning condition or else the package load fails on warnings:
+# , warning = function(cond) {
+#     cat("Got a warning which might or might not mean the ExomeDepth package isn't installed.\n\n",file=stderr())
+#     cat("If so, try install.packages() or check whether you're using\n",file=stderr())
+#     cat("the version of R for which you already installed it.\n\n",file=stderr())
+#     print(cond, file=stderr())
+# })
+
 
 # if (file.exists(opt$countsfile)) {
 #     if(opt$verbose) {

@@ -161,7 +161,10 @@ if [[ $genome == "" ]]
     fi
     # since the getPlinkIBD.bash step is already as parallel as it's going to get,
     # just run it directly from this script rather than submitting a job.
-	  getPlinkIBD.bash -v -o $outdir -r $vcf
+	  bsub -o $outdir/clutter/PlinkIBDJobOutput.out \
+         -e $outdir/clutter/PlinkIBDJobOutput.err \
+         -q bweek -P $RANDOM -J plinkibd -W 10:00 \
+         "getPlinkIBD.bash -v -o $outdir -r $vcf"
 	  # now grab the genome file created by that script
     genome=$outdir/$(basename $vcf).genome
     if test $verbose
@@ -178,7 +181,7 @@ fi
 
 if test $verbose
   then
-    echo "Interlude: waiting for Step 1 jobs..."
+    echo "Interlude: waiting for Step 1 & 2 jobs..."
 fi
 
 
@@ -189,6 +192,15 @@ do
     echo " ExomeDepth count jobs to finish"
 	sleep 60
 done
+
+# and then wait for the Step 2 jobs
+while test $((`bjobs | grep plinkibd | wc -l`)) -gt 0
+do
+    echo -n "Waiting for" $((`bjobs | grep plinkibd | wc -l`)) 
+    echo " Plink IBD jobs to finish"
+  sleep 60
+done
+
 
 if test $verbose
   then

@@ -68,6 +68,8 @@ plink --file $pedmapprefix --freq --out $pedmapprefix
 # calculate number of samples. 
 # see http://stackoverflow.com/questions/9458752/variable-for-number-of-lines-in-a-file
 nlines=`cat $pedmapprefix.ped | wc -l`
+nlines=$(($nlines + 1))
+nlines=$(($nlines - 1)) # dumb way of casting to integer in bash
 
 # if fewer than 1000 samples, you can do the genome calculation in serial
 # in a few minutes and avoid burdening the LSF system.
