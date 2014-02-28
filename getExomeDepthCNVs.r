@@ -294,8 +294,8 @@ for (i in call_indices) {
         print(exclude_list[[sample_name]],file=stdout())
     }
     
-    exclude_indices = match(colnames(countmat),exclude_list[[sample_name]]) # individual excludes
-    exclude_indices = c(exclude_indices,match(colnames(countmat),exclude_all)) # excludes from all samples
+    exclude_indices = match(exclude_list[[sample_name]],colnames(countmat)) # individual excludes
+    exclude_indices = c(exclude_indices,match(exclude_all,colnames(countmat))) # excludes from all samples
     exclude_indices = exclude_indices[!is.na(exclude_indices)] # remove NA
     
     # call ExomeDepth to select best reference set, excluding
