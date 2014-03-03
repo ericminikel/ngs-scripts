@@ -9,11 +9,10 @@
 # bsub -q bweek -W 167:00 -P $RANDOM -J edpipe \
 #       -o /humgen/atgu1/fs03/eminikel/048muscle/data/exdep/pipeline.out \
 #       -e /humgen/atgu1/fs03/eminikel/048muscle/data/exdep/pipeline.err \
-# "exomeDepthPipeline.bash \
+# "exomeDepthPipeline.bash -c \
 # -o /humgen/atgu1/fs03/eminikel/048muscle/data/exdep \
 # -b /humgen/atgu1/fs03/eminikel/048muscle/data/MD1.existent.bam.list \
-# -r /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf \
-# -e /humgen/atgu1/fs03/eminikel/048muscle/data/exclude.list"
+# -g /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf.genome"
 
 # to really run:
 # cd /humgen/atgu1/fs03/eminikel/048muscle/data/
@@ -22,12 +21,22 @@
 #  "exomeDepthPipeline.bash \
 #  -o /humgen/atgu1/fs03/eminikel/048muscle/data/pipeout \
 #  -b /humgen/atgu1/fs03/eminikel/048muscle/data/FMZ.248.list \
-#  -e /humgen/atgu1/fs03/eminikel/048muscle/data/exclude.list \
 #  -r /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf"
 
 # choose one of these two options:
-# -r /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf
-# -g /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf.genome
+# -r /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf \
+# -g /humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf.genome \
+
+# to run on the ATGU 39 test set:
+# cd /humgen/atgu1/fs03/eminikel/045atgu/cnvtest
+# bsub -q bweek -W 167:00 -P $RANDOM -J edpipe \
+#       -o /humgen/atgu1/fs03/eminikel/045atgu/cnvtest/pipeline.out \
+#       -e /humgen/atgu1/fs03/eminikel/045atgu/cnvtest/pipeline.err \
+# "exomeDepthPipeline.bash \
+# -o /humgen/atgu1/fs03/eminikel/045atgu/cnvtest/exdep \
+# -b /humgen/atgu1/fs03/eminikel/045atgu/cnvtest/bam.list \
+# -g /humgen/atgu1/fs03/eminikel/045atgu/cnvtest/fake.genome"
+
 
 
 # The below code for parsing command line arguments was lightly modified from: 
@@ -42,7 +51,6 @@ verbose=1
 vcf="" # -r for "raw vcf" because -v was taken by "verbose"
 bamlist="" 
 genome=""
-excludelist=""
 havecounts=0
 
 # Constants
@@ -61,8 +69,6 @@ while getopts "vo:b:r:g:e:c" opt; do
         ;;
     g)  genome=$OPTARG
         ;;
-    e)  excludelist=$OPTARG
-        ;;
     c)  havecounts=1
         ;;
     esac
@@ -79,7 +85,6 @@ if test $verbose
           vcf='$vcf', 
           genome='$genome', 
           bamlist='$bamlist', 
-          excludelist='$excludelist', 
           havecounts='$havecounts'
           unused arguments: $@"
 fi
@@ -89,7 +94,6 @@ fi
 # temporary settings for testing - uncomment to run this script piece by piece
 # outdir=/humgen/atgu1/fs03/eminikel/048muscle/data/fulltest
 # bamlist=/humgen/atgu1/fs03/eminikel/048muscle/data/muscle.bam.existent.list
-# excludelist=/humgen/atgu1/fs03/eminikel/048muscle/data/exclude.list
 # vcf=/humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf
 # genome=/humgen/atgu1/fs03/eminikel/048muscle/data/macarthur_muscle_disease_ALL.vcf.genome
 # countsfile=/humgen/atgu1/fs03/eminikel/048muscle/data/fulltest/merged.counts
@@ -137,8 +141,11 @@ if test $havecounts -eq 1 # if the user specifies -c, then skip and use existing
     # Parallelize the calculation of ExomeDepth counts, later merge back together
     bsub -o $outdir/clutter/ExomeDepthCountJobOutput_%I.out \
          -e $outdir/clutter/ExomeDepthCountJobOutput_%I.err \
-         -q bweek -P $RANDOM -J excnt[1-$nbam] -W 10:00 \
+         -q bweek -P $RANDOM -J excnt[1-$nbam] -W 05:00 \
          "getExomeDepthCounts.r -s \`sed -n \${LSB_JOBINDEX}p $bamlist\` -o $outdir"
+
+    # note: most jobs take 2-3 hours per sample, but the long tail can take > 10h
+    # so to be safe I am setting -W 40:00
 fi
 
 
@@ -251,7 +258,7 @@ fi
 if test $verbose
   then
     echo "Here's what the ExomeDepth CNV calls will look like:"
-    echo "getExomeDepthCNVs.r -c $countsfile -s \`sed -n \${LSB_JOBINDEX}p all.samples.bamnames\`.blist --genome $genome -t .15 -e $excludelist -o $outdir"
+    echo "getExomeDepthCNVs.r -c $countsfile -s \`sed -n \${LSB_JOBINDEX}p all.samples.bamnames\`.blist --genome $genome -t .15 -o $outdir"
 fi
 
 # Step 4: Call CNVs using the counts and .genome file
@@ -259,7 +266,7 @@ fi
 bsub -o $outdir/clutter/ExomeDepthCNVJobOutput_%I.out \
      -e $outdir/clutter/ExomeDepthCNVJobOutput_%I.err \
      -q bhour -P $RANDOM -J excnv[1-$nbam] -W 00:45 \
-     "getExomeDepthCNVs.r -c $countsfile -s \`sed -n \${LSB_JOBINDEX}p all.samples.bamnames\`.blist --genome $genome -t .15 -e $excludelist -o $outdir"
+     "getExomeDepthCNVs.r -c $countsfile -s \`sed -n \${LSB_JOBINDEX}p all.samples.bamnames\`.blist --genome $genome -t .15 -o $outdir"
 
 if test $verbose
   then
