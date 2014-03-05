@@ -121,6 +121,25 @@ if (opt$verbose) {
     cat("Calling ExomeDepth to compute counts for the BAMs...",file=stdout())
 }
 
+# ExomeDepth sometimes spectacularly fails to find the BAM index, for no clear reason
+# so help it out by testing a few likely filenames
+bamindexes = bams
+for (i in 1:length(bamindexes)) {
+  stardotbai = gsub(".bam",".bai",bams[i])
+  stardotbamdotbai = gsub(".bam",".bam.bai",bams[i])
+  if (file.exists(stardotbai)) {
+    bamindexes[i] = stardotbai
+  } else if (file.exists(stardotbamdotbai)) {
+    bamindexes[i] = stardotbamdotbai
+  }
+  else {
+    cat(paste("Cannot find a .bai index for BAM: ",bams[i],"\n",sep=""),file=stderr())
+    cat("stopping execution....",file=stderr())
+    stop()
+  }
+}
+
+
 counts = getBamCounts(bed.frame = exons.hg19, bam.files = bams)
 
 if (opt$verbose) {
