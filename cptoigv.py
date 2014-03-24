@@ -22,9 +22,9 @@ sfile = open('samples.txt',mode='wb')
 slfile = open('sample_locus.txt',mode='wb')
 
 for bam in args.bams:
+    samplename = os.path.basename(bam)[:-4] # remove directory and .bam extension
+    sfile.write(samplename+"\t"+bam+"\n")
     for locus in args.loci:
-        samplename = os.path.basename(bam)[:-4] # remove directory and .bam extension
-        sfile.write(samplename+"\t"+bam+"\n")
         samplelocusid = samplename+locus
         slfile.write(samplelocusid+"\t"+locus+"\t"+samplename+"\n")
 
