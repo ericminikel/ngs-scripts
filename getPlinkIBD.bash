@@ -46,8 +46,14 @@ if test $vcf!=""
     if test $verbose
       then echo "Starting from raw vcf file: "$vcf
     fi
+    if test ${vcf: -3} == ".gz"
+      then
+        vcfflag=--gzvcf
+      else
+        vcfflag=--vcf
+    fi
     # call vcftools to subset the 5k snps and recode to ped/map files
-    vcftools --vcf $vcf \
+    vcftools $vcfflag $vcf \
              --positions $ibdsnplist \
              --plink --recode --out $outdir/$(basename $vcf)
     # now use the newly created ped/map file
