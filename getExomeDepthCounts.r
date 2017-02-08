@@ -125,8 +125,8 @@ if (opt$verbose) {
 # so help it out by testing a few likely filenames
 bamindexes = bams
 for (i in 1:length(bamindexes)) {
-  stardotbai = gsub(".bam",".bai",bams[i])
-  stardotbamdotbai = gsub(".bam",".bam.bai",bams[i])
+  stardotbai = gsub(".bam$",".bai",bams[i])
+  stardotbamdotbai = gsub(".bam$",".bam.bai",bams[i])
   if (file.exists(stardotbai)) {
     bamindexes[i] = stardotbai
   } else if (file.exists(stardotbamdotbai)) {
@@ -156,7 +156,7 @@ if (opt$verbose) {
 if (file.exists(opt$bamlist)) {
     countspath = paste(opt$outpath,"/counts.txt",sep="")
 } else  {
-    countspath = paste(opt$outpath,"/",gsub(".bam",".counts.txt",basename(opt$singlebam)),sep="")
+    countspath = paste(opt$outpath,"/",gsub(".bam$",".counts.txt",basename(opt$singlebam)),sep="")
 }
 write.table(counts,countspath,sep="\t",col.names=TRUE,row.names=FALSE,quote=FALSE)
 
