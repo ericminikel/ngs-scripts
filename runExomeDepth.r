@@ -3,7 +3,7 @@
 # Eric Minikel
 # script to run ExomeDepth
 # how to run:
-# runExomeDepth.r -b bamlist.txt -o /output/path/ -v > runExomeDepthOutput.txt
+# Rscript runExomeDepth.r -b bamlist.txt -o /output/path/ -v > runExomeDepthOutput.txt
 
 start_time = Sys.time()
 
@@ -15,7 +15,7 @@ options(stringsAsFactors=FALSE) # crucial for handling BAM filenames as strings
 
 option_list = list(
   make_option(c("-b", "--bamlist"), action="store", default='', 
-              type='character', help="Path to list of BAMs"),
+              type='character', help="Path to list of BAMs [Full Path]"),
   make_option(c("-o", "--outdir"), action="store", default='./',
               type='character', help="Output directory [default %default]"),
   make_option(c("-v", "--verbose"), action="store_true", default=FALSE,
@@ -95,8 +95,8 @@ for (i in 1:dim(countmat)[2]) {
         reference=reference_set,
         formula = 'cbind(test,reference) ~ 1')
     all_exons = CallCNVs(x = all_exons, transition.probability=10^-4,
-        chromosome=countdf$space, start=countdf$start,
-        end=countdf$end, name=countdf$names)
+        chromosome=countdf$chromosome, start=countdf$start,
+        end=countdf$end, name=countdf$exon)
     write.table(all_exons@CNV.calls, file=paste(sample_name,".txt",sep=''), 
         sep='\t', row.names=FALSE, col.names=TRUE, quote=FALSE)
     if (opt$verbose) {
